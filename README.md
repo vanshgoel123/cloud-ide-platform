@@ -49,6 +49,24 @@ curl http://localhost:8000/health
 
 ## API Usage
 
+### Live API (EC2)
+
+- Base URL: `http://52.73.189.245:8000`
+- Health: `http://52.73.189.245:8000/health`
+- List workspaces: `http://52.73.189.245:8000/api/workspaces`
+
+Quick test:
+
+```bash
+BASE_URL="http://52.73.189.245:8000"
+
+curl -s "$BASE_URL/health"
+curl -s "$BASE_URL/api/workspaces" | jq .
+```
+
+- Swagger UI: `http://52.73.189.245:8000/docs`
+- OpenAPI JSON: `http://52.73.189.245:8000/openapi.json`
+
 - API Endpoints:
     - POST   /api/workspaces           → create workspace
     - GET    /api/workspaces           → list all
@@ -62,7 +80,7 @@ curl http://localhost:8000/health
 ### Create a workspace
 
 ```bash
-curl -s -X POST http://localhost:8000/api/workspaces \
+curl -s -X POST http://52.73.189.245:8000/api/workspaces \
   -H "Content-Type: application/json" \
   -d '{"user_id": "Vansh"}' | jq .
 ```
@@ -87,7 +105,7 @@ Open the `url` in your browser → VS Code in the browser! Password: `devpass123
 ### Create a second workspace
 
 ```bash
-curl -s -X POST http://localhost:8000/api/workspaces \
+curl -s -X POST http://52.73.189.245:8000/api/workspaces \
   -H "Content-Type: application/json" \
   -d '{"user_id": "Vardan"}' | jq .
 ```
@@ -95,35 +113,35 @@ curl -s -X POST http://localhost:8000/api/workspaces \
 ### List all workspaces
 
 ```bash
-curl -s http://localhost:8000/api/workspaces | jq .
+curl -s http://52.73.189.245:8000/api/workspaces | jq .
 ```
 
 ### Stop a workspace (preserve data)
 
 ```bash
-curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/stop | jq .
+curl -s -X POST http://52.73.189.245:8000/api/workspaces/<workspace_id>/stop | jq .
 ```
 
 ### Restart a stopped workspace (data is still there!)
 
 ```bash
-curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/start | jq .
+curl -s -X POST http://52.73.189.245:8000/api/workspaces/<workspace_id>/start | jq .
 ```
 
 ### Delete a workspace
 
 ```bash
 # Keep volume (can restart later)
-curl -s -X DELETE http://localhost:8000/api/workspaces/<workspace_id>
+curl -s -X DELETE http://52.73.189.245:8000/api/workspaces/<workspace_id>
 
 # Purge everything including stored code
-curl -s -X DELETE "http://localhost:8000/api/workspaces/<workspace_id>?purge=true"
+curl -s -X DELETE "http://52.73.189.245:8000/api/workspaces/<workspace_id>?purge=true"
 ```
 
 ### Heartbeat (keep alive)
 
 ```bash
-curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/heartbeat
+curl -s -X POST http://52.73.189.245:8000/api/workspaces/<workspace_id>/heartbeat
 ```
 
 ---
