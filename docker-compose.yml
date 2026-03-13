@@ -1,0 +1,28 @@
+services:
+  api:
+    build: ./api
+    container_name: cloudide-api
+    ports:
+      - "${API_PORT:-8000}:8000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   
+      - api-data:/data                              
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
+      - VS_IMAGE=${VS_IMAGE:-codercom/code-server:latest}
+      - VS_CPU_LIMIT=${VS_CPU_LIMIT:-0.5}
+      - VS_MEM_LIMIT=${VS_MEM_LIMIT:-512m}
+      - VS_IDLE_TIMEOUT_MIN=${VS_IDLE_TIMEOUT_MIN:-30}
+      - VS_PASSWORD=${VS_PASSWORD:-devpass123}
+      - DB_PATH=/data/workspaces.db
+      - DOCKER_NETWORK=cloudide_net
+    networks:
+      - cloudide_net
+
+networks:
+  cloudide_net:
+    name: cloudide_net
+    driver: bridge
+
+volumes:
+  api-data:
