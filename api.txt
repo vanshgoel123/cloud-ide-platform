@@ -1,0 +1,10 @@
+curl -s -X POST http://localhost:8000/api/workspaces \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "Vansh"}' | jq .
+
+
+curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/stop | jq .
+
+
+curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/start | jq .
+curl -s -X DELETE http://localhost:8000/api/workspaces/<workspace_id>

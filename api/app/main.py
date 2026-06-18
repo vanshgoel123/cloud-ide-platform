@@ -38,6 +38,11 @@ def _to_out(vs: dict) -> dict:
     return vs
 
 
+def _ensure_not_deleted(vs: dict):
+    if vs.get("status") == "deleted":
+        raise HTTPException(409, "workspace is in deleted section; restore it before using it")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     db.init_db()
@@ -103,6 +108,7 @@ def api_start(vs_id: str):
         raise HTTPException(404, "workspace not found")
     cid = start_workspace(vs_id, vs["token"], vs["port"])
     db.update_status(vs_id, "running", cid)
+    db.clear_deleted_mark(vs_id)
     db.touch_active(vs_id)
     return _to_out(db.get_workspace(vs_id))
 
@@ -113,6 +119,7 @@ def api_stop(vs_id: str):
     vs = db.get_workspace(vs_id)
     if not vs:
         raise HTTPException(404, "workspace not found")
+    _ensure_not_deleted(vs)
     stop_workspace(vs_id)
     db.update_status(vs_id, "stopped")
     return _to_out(db.get_workspace(vs_id))
@@ -125,8 +132,12 @@ def api_delete(vs_id: str, purge: bool = Query(False)):
     if not vs:
         raise HTTPException(404, "workspace not found")
     remove_workspace(vs_id, purge_volume=purge)
-    db.delete_workspace(vs_id)
-    return {"deleted": vs_id, "volume_purged": purge}
+    if purge:
+        db.purge_workspace(vs_id)
+        return {"deleted": vs_id, "volume_purged": True}
+
+    db.mark_deleted(vs_id)
+    return {"deleted": vs_id, "volume_purged": False, "status": "deleted"}
 
 
 #  Heartbeat (keeps workspace alive) 
@@ -135,5 +146,6 @@ def api_heartbeat(vs_id: str):
     vs = db.get_workspace(vs_id)
     if not vs:
         raise HTTPException(404, "workspace not found")
+    _ensure_not_deleted(vs)
     db.touch_active(vs_id)
     return {"ok": True}

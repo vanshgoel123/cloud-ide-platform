@@ -26,10 +26,14 @@ def init_db():
             container_id TEXT,
             port        INTEGER,
             status      TEXT DEFAULT 'running',
+            deleted_at  TEXT,
             created_at  TEXT NOT NULL,
             last_active TEXT NOT NULL
         )
     """)
+    columns = {row[1] for row in c.execute("PRAGMA table_info(workspaces)").fetchall()}
+    if "deleted_at" not in columns:
+        c.execute("ALTER TABLE workspaces ADD COLUMN deleted_at TEXT")
     c.commit()
 
 
@@ -40,8 +44,8 @@ def _now() -> str:
 def add_workspace(vs_id: str, token: str, user_id: str, container_id: str, port: int):
     now = _now()
     _conn().execute(
-        "INSERT INTO workspaces (id, token, user_id, container_id, port, status, created_at, last_active) "
-        "VALUES (?, ?, ?, ?, ?, 'running', ?, ?)",
+        "INSERT INTO workspaces (id, token, user_id, container_id, port, status, deleted_at, created_at, last_active) "
+        "VALUES (?, ?, ?, ?, ?, 'running', NULL, ?, ?)",
         (vs_id, token, user_id, container_id, port, now, now),
     )
     _conn().commit()
@@ -78,7 +82,20 @@ def touch_active(vs_id: str):
     _conn().commit()
 
 
-def delete_workspace(vs_id: str):
+def mark_deleted(vs_id: str):
+    _conn().execute(
+        "UPDATE workspaces SET status = 'deleted', deleted_at = ? WHERE id = ?",
+        (_now(), vs_id),
+    )
+    _conn().commit()
+
+
+def clear_deleted_mark(vs_id: str):
+    _conn().execute("UPDATE workspaces SET deleted_at = NULL WHERE id = ?", (vs_id,))
+    _conn().commit()
+
+
+def purge_workspace(vs_id: str):
     _conn().execute("DELETE FROM workspaces WHERE id = ?", (vs_id,))
     _conn().commit()
 

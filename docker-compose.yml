@@ -19,6 +19,16 @@ services:
     networks:
       - cloudide_net
 
+  frontend:
+    build: ./frontend
+    container_name: cloudide-frontend
+    ports:
+      - "${WEB_PORT:-3000}:80"
+    depends_on:
+      - api
+    networks:
+      - cloudide_net
+
 networks:
   cloudide_net:
     name: cloudide_net

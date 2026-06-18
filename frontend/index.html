@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#06101d" />
+    <title>Cloud IDE Platform</title>
+    <meta
+      name="description"
+      content="Create isolated browser-based VS Code workspaces with one click."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-a"></div>
+    <div class="ambient ambient-b"></div>
+
+    <div class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Cloud IDE Platform</p>
+          <h1>One clean place to create, launch, and manage browser IDE workspaces.</h1>
+          <p class="lede">
+            Give every user a private code-server environment with persistent storage, one-click controls, and
+            automatic idle cleanup.
+          </p>
+        </div>
+
+        <div class="status-card">
+          <div id="api-badge" class="status-badge status-badge--offline">Checking API...</div>
+          <div class="status-card__meta">
+            <span>Auto refresh every 15s</span>
+            <span>Idle workspaces stop after 30 minutes</span>
+          </div>
+          <button class="ghost-button" id="refresh-btn" type="button">Refresh</button>
+        </div>
+      </header>
+
+      <section class="hero-grid">
+        <div class="hero-card hero-card--feature">
+          <div class="hero-card__header">
+            <span class="pill pill--accent">Fast start</span>
+            <span class="pill">Persistent storage</span>
+          </div>
+
+          <div class="hero-card__content">
+            <div class="metrics">
+              <div>
+                <strong id="total-count">0</strong>
+                <span>Total workspaces</span>
+              </div>
+              <div>
+                <strong id="running-count">0</strong>
+                <span>Running right now</span>
+              </div>
+              <div>
+                <strong id="stopped-count">0</strong>
+                <span>Stopped safely</span>
+              </div>
+              <div>
+                <strong id="deleted-count">0</strong>
+                <span>In Deleted</span>
+              </div>
+            </div>
+
+            <div class="steps">
+              <div>
+                <span>01</span>
+                <p>Create a workspace</p>
+              </div>
+              <div class="arrow">→</div>
+              <div>
+                <span>02</span>
+                <p>Open browser IDE</p>
+              </div>
+              <div class="arrow">→</div>
+              <div>
+                <span>03</span>
+                <p>Stop or purge when done</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-card">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">New workspace</p>
+              <h2>Create in one click</h2>
+            </div>
+          </div>
+
+          <div class="form-stack">
+            <label class="field">
+              <span>Workspace name / user id</span>
+              <input id="user-id" type="text" placeholder="Example: vansh, marketing, client-01" autocomplete="off" />
+            </label>
+
+            <button class="primary-button" id="create-btn" type="button">Create workspace</button>
+          </div>
+
+          <div class="info-strip">
+            Each workspace gets isolated code-server storage and a unique port.
+          </div>
+        </div>
+      </section>
+
+      <main class="content-grid">
+        <section class="panel panel--workspaces">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">Workspace list</p>
+              <h2>Manage every environment</h2>
+            </div>
+            <div class="inline-hint">Live data from the API</div>
+          </div>
+
+          <div id="message" class="alert" hidden></div>
+          <h3 class="section-subtitle">Active workspaces</h3>
+          <div id="workspace-grid" class="workspace-grid"></div>
+          <h3 class="section-subtitle section-subtitle--deleted">Deleted workspaces</h3>
+          <div id="deleted-grid" class="workspace-grid workspace-grid--deleted"></div>
+        </section>
+
+        <aside class="panel panel--guide">
+          <div class="section-heading">
+            <div>
+              <p class="eyebrow">User guide</p>
+              <h2>Simple workflow</h2>
+            </div>
+          </div>
+
+          <div class="guide-list">
+            <div class="guide-item">
+              <span>1</span>
+              <div>
+                <h3>Create a workspace</h3>
+                <p>Give it a name or user id, then the API spins up a private code-server container.</p>
+              </div>
+            </div>
+
+            <div class="guide-item">
+              <span>2</span>
+              <div>
+                <h3>Open the browser IDE</h3>
+                <p>Use the generated URL to open VS Code in the browser and start coding immediately.</p>
+              </div>
+            </div>
+
+            <div class="guide-item">
+              <span>3</span>
+              <div>
+                <h3>Stop or purge when needed</h3>
+                <p>Stopping keeps files. Purging removes everything if you want a clean slate.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="footer-note">Idle workspaces are auto-stopped by the backend to save resources.</div>
+        </aside>
+      </main>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

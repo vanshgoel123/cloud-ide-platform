@@ -43,6 +43,9 @@ docker compose up -d --build
 # 5. Verify (is it running?)
 curl http://localhost:8000/health
 # {"ok": true}
+
+# 6. Open the frontend dashboard
+open http://localhost:3000
 ```
 
 ---
@@ -51,21 +54,22 @@ curl http://localhost:8000/health
 
 ### Live API (EC2)
 
-- Base URL: `http://52.73.189.245:8000`
-- Health: `http://52.73.189.245:8000/health`
-- List workspaces: `http://52.73.189.245:8000/api/workspaces`
+- Frontend dashboard: `http://localhost:3000`
+- Base URL: `http://localhost:8000`
+- Health: `http://localhost:8000/health`
+- List workspaces: `http://localhost:8000/api/workspaces`
 
 Quick test:
 
 ```bash
-BASE_URL="http://52.73.189.245:8000"
+BASE_URL="http://localhost:8000"
 
 curl -s "$BASE_URL/health"
 curl -s "$BASE_URL/api/workspaces" | jq .
 ```
 
-- Swagger UI: `http://52.73.189.245:8000/docs`
-- OpenAPI JSON: `http://52.73.189.245:8000/openapi.json`
+- Swagger UI: `http://localhost:8000/docs`
+- OpenAPI JSON: `http://localhost:8000/openapi.json`
 
 - API Endpoints:
     - POST   /api/workspaces           → create workspace
@@ -80,7 +84,7 @@ curl -s "$BASE_URL/api/workspaces" | jq .
 ### Create a workspace
 
 ```bash
-curl -s -X POST http://52.73.189.245:8000/api/workspaces \
+curl -s -X POST http://localhost:8000/api/workspaces \
   -H "Content-Type: application/json" \
   -d '{"user_id": "Vansh"}' | jq .
 ```
@@ -105,7 +109,7 @@ Open the `url` in your browser → VS Code in the browser! Password: `devpass123
 ### Create a second workspace
 
 ```bash
-curl -s -X POST http://52.73.189.245:8000/api/workspaces \
+curl -s -X POST http://localhost:8000/api/workspaces \
   -H "Content-Type: application/json" \
   -d '{"user_id": "Vardan"}' | jq .
 ```
@@ -113,35 +117,35 @@ curl -s -X POST http://52.73.189.245:8000/api/workspaces \
 ### List all workspaces
 
 ```bash
-curl -s http://52.73.189.245:8000/api/workspaces | jq .
+curl -s http://localhost:8000/api/workspaces | jq .
 ```
 
 ### Stop a workspace (preserve data)
 
 ```bash
-curl -s -X POST http://52.73.189.245:8000/api/workspaces/<workspace_id>/stop | jq .
+curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/stop | jq .
 ```
 
 ### Restart a stopped workspace (data is still there!)
 
 ```bash
-curl -s -X POST http://52.73.189.245:8000/api/workspaces/<workspace_id>/start | jq .
+curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/start | jq .
 ```
 
 ### Delete a workspace
 
 ```bash
 # Keep volume (can restart later)
-curl -s -X DELETE http://52.73.189.245:8000/api/workspaces/<workspace_id>
+curl -s -X DELETE http://localhost:8000/api/workspaces/<workspace_id>
 
 # Purge everything including stored code
-curl -s -X DELETE "http://52.73.189.245:8000/api/workspaces/<workspace_id>?purge=true"
+curl -s -X DELETE "http://localhost:8000/api/workspaces/<workspace_id>?purge=true"
 ```
 
 ### Heartbeat (keep alive)
 
 ```bash
-curl -s -X POST http://52.73.189.245:8000/api/workspaces/<workspace_id>/heartbeat
+curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/heartbeat
 ```
 
 ---
@@ -188,6 +192,12 @@ e222fe8aa2f8   vs-c357bf7d    0.00%   35.45MiB / 512MiB   6.92%
 
 ```
 .
+├── frontend/
+│   ├── Dockerfile          # Static Nginx frontend image
+│   ├── app.js              # Browser dashboard logic
+│   ├── index.html          # UI shell
+│   ├── nginx.conf          # Proxy /api to backend
+│   └── styles.css          # Modern visual design
 ├── api/
 │   ├── Dockerfile          # Build API container
 │   ├── requirements.txt
@@ -208,6 +218,20 @@ e222fe8aa2f8   vs-c357bf7d    0.00%   35.45MiB / 512MiB   6.92%
 ├── .env.example
 └── README.md
 ```
+
+## Frontend
+
+The repo now includes a real user-facing dashboard at `http://localhost:3000`.
+
+It lets users:
+
+- Create a workspace from the homepage.
+- See live workspace cards with status, port, timestamps, and browser IDE URL.
+- Open the workspace instantly.
+- Start, stop, heartbeat, delete, or purge a workspace.
+- Refresh live state without touching the API directly.
+
+The frontend runs behind Nginx and proxies `/api` to the FastAPI service, so users only need one clean site.
 
 ---
 

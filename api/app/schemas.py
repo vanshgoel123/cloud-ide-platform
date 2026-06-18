@@ -12,6 +12,7 @@ class WorkspaceOut(BaseModel):
     container_id: str | None = None
     port: int | None = None
     status: str
+    deleted_at: str | None = None
     url: str | None = None
     created_at: str
     last_active: str
