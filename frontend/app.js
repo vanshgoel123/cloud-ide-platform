@@ -35,7 +35,7 @@ function hideMessage() {
 }
 
 async function api(path, options = {}) {
-  const response = await fetch(`/api${path}`, {
+  const response = await fetch(path, {
     headers: {
       'Content-Type': 'application/json',
       ...(options.headers || {}),
@@ -44,7 +44,14 @@ async function api(path, options = {}) {
   });
 
   const bodyText = await response.text();
-  const body = bodyText ? JSON.parse(bodyText) : null;
+  let body = null;
+  if (bodyText) {
+    try {
+      body = JSON.parse(bodyText);
+    } catch {
+      body = { detail: bodyText };
+    }
+  }
 
   if (!response.ok) {
     const message = body?.detail || `Request failed (${response.status})`;
@@ -55,23 +62,7 @@ async function api(path, options = {}) {
 }
 
 async function request(path, options = {}) {
-  const response = await fetch(path, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(options.headers || {}),
-    },
-    ...options,
-  });
-
-  const bodyText = await response.text();
-  const body = bodyText ? JSON.parse(bodyText) : null;
-
-  if (!response.ok) {
-    const message = body?.detail || `Request failed (${response.status})`;
-    throw new Error(message);
-  }
-
-  return body;
+  return api(path, options);
 }
 
 function updateStats() {
@@ -224,7 +215,7 @@ async function loadWorkspaces(silent = false) {
   }
 
   try {
-    const [health, workspaces] = await Promise.all([request('/health'), api('/workspaces')]);
+    const [health, workspaces] = await Promise.all([request('/health'), api('/api/workspaces')]);
     state.workspaces = workspaces;
     els.apiBadge.textContent = health.ok ? 'API online' : 'API unavailable';
     els.apiBadge.className = `status-badge ${health.ok ? 'status-badge--online' : 'status-badge--offline'}`;
@@ -246,19 +237,19 @@ async function loadWorkspaces(silent = false) {
 async function performAction(workspaceId, action) {
   try {
     if (action === 'start') {
-      await api(`/workspaces/${workspaceId}/start`, { method: 'POST' });
+      await api(`/api/workspaces/${workspaceId}/start`, { method: 'POST' });
       showMessage('Workspace started.', 'success');
     } else if (action === 'stop') {
-      await api(`/workspaces/${workspaceId}/stop`, { method: 'POST' });
+      await api(`/api/workspaces/${workspaceId}/stop`, { method: 'POST' });
       showMessage('Workspace stopped.', 'success');
     } else if (action === 'heartbeat') {
-      await api(`/workspaces/${workspaceId}/heartbeat`, { method: 'POST' });
+      await api(`/api/workspaces/${workspaceId}/heartbeat`, { method: 'POST' });
       showMessage('Workspace marked active.', 'success');
     } else if (action === 'delete') {
-      await api(`/workspaces/${workspaceId}`, { method: 'DELETE' });
+      await api(`/api/workspaces/${workspaceId}`, { method: 'DELETE' });
       showMessage('Workspace moved to Deleted. Files are kept.', 'success');
     } else {
-      await api(`/workspaces/${workspaceId}?purge=true`, { method: 'DELETE' });
+      await api(`/api/workspaces/${workspaceId}?purge=true`, { method: 'DELETE' });
       showMessage('Workspace deleted and data purged.', 'success');
     }
 
@@ -279,7 +270,7 @@ async function createWorkspace() {
   els.createBtn.textContent = 'Creating...';
 
   try {
-    await api('/workspaces', {
+    await api('/api/workspaces', {
       method: 'POST',
       body: JSON.stringify({ user_id: userId }),
     });

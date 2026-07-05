@@ -1,266 +1,197 @@
-# ☁️ Cloud IDE Platform
-> On-demand VS Code environments in the browser — each user gets an isolated, persistent workspace.
+# Cloud IDE Platform
+
+Production-oriented platform to provision isolated browser-based VS Code workspaces on demand.
+
+## Why This Project
+
+This system demonstrates end-to-end software engineering across backend design, container orchestration, frontend operations UX, CI/CD, and production hardening.
+
+## Core Features
+
+- One-click workspace provisioning using Dockerized code-server
+- Persistent per-workspace storage via Docker volumes
+- Start/stop/delete/purge lifecycle APIs
+- Idle reaper to auto-stop inactive workspaces
+- Workspace dashboard (frontend + API proxy via Nginx)
+- Health and metrics endpoints (`/health`, `/metrics`)
+- Rate limiting for workspace creation
+- Optional API key protection for mutation endpoints
+
 ## Architecture
 
-This project has two main parts:
+```mermaid
+flowchart LR
+  U[User Browser] --> F[Frontend: Nginx + Static UI]
+  F -->|/api/*| A[FastAPI Service]
+  A --> D[(SQLite Metadata DB)]
+  A --> R[Idle Reaper Scheduler]
+  A --> X[Docker Engine API]
+  X --> C1[code-server Container #1]
+  X --> C2[code-server Container #2]
+  C1 --> V1[(Volume #1)]
+  C2 --> V2[(Volume #2)]
+```
 
-- The API service keeps track of workspaces, creates containers, and stores workspace details in SQLite.
-- Each user workspace runs as its own `code-server` container, so files stay isolated per user.
+## Tech Stack
 
-How a request flows:
+- Backend: FastAPI, Pydantic v2, APScheduler, Docker SDK, Prometheus client
+- Frontend: HTML/CSS/Vanilla JS, Nginx
+- Data: SQLite (single-node metadata)
+- DevOps: Docker Compose, GitHub Actions (lint/test/build/push)
 
-1. A user sends a request to the FastAPI service.
-2. The API creates or manages a workspace container through Docker.
-3. That workspace gets its own volume, port, and password.
-4. The API returns the URL, and the user opens VS Code in the browser.
+## Repository Structure
 
-There is also a small background reaper inside the API service. It checks for inactive workspaces and stops them after the idle timeout, but it does not delete the saved files.
+```text
+api/
+  app/
+    main.py             # API endpoints, middleware, metrics, rate limiting
+    db.py               # SQLite schema + queries
+    docker_manager.py   # Docker runtime lifecycle wrapper
+    idle_reaper.py      # Background idle cleanup scheduler
+    schemas.py          # Request/response models
+    config.py           # Environment-backed settings
+  Dockerfile
+  requirements.txt
+frontend/
+  index.html
+  app.js
+  styles.css
+  nginx.conf
+tests/
+  test_api.py
+docker-compose.yml
+.github/workflows/main.yml
+```
 
----
+## Local Development
 
-## Prerequisites
+### Prerequisites
 
-- **Docker**
-- **Docker Compose**
-- Ports **8000** (API) and **9000–9099** (workspaces) available
+- Docker + Docker Compose
+- Linux/macOS recommended for Docker socket compatibility
 
----
-
-## Quick Start 
+### Run
 
 ```bash
-# 1. Clone
-git clone https://github.com/vanshgoel123/cloud-ide-platform.git
-
-# 2. Copy env file
 cp .env.example .env
-
-# 3. Launch
+# IMPORTANT: set a secure VS_PASSWORD before using publicly
 docker compose up -d --build
-
-# 4. First it will automatically pull code-server image (first time only)
-
-# 5. Verify (is it running?)
-curl http://localhost:8000/health
-# {"ok": true}
-
-# 6. Open the frontend dashboard
-open http://localhost:3000
 ```
 
----
-
-## API Usage
-
-### Live API (EC2)
-
-- Frontend dashboard: `http://localhost:3000`
-- Base URL: `http://localhost:8000`
-- Health: `http://localhost:8000/health`
-- List workspaces: `http://localhost:8000/api/workspaces`
-
-Quick test:
+### Verify
 
 ```bash
-BASE_URL="http://localhost:8000"
-
-curl -s "$BASE_URL/health"
-curl -s "$BASE_URL/api/workspaces" | jq .
+curl -s http://localhost:8000/health | jq .
+curl -s http://localhost:8000/metrics | head
 ```
 
-- Swagger UI: `http://localhost:8000/docs`
-- OpenAPI JSON: `http://localhost:8000/openapi.json`
+Frontend dashboard: `http://localhost:3000`
 
-- API Endpoints:
-    - POST   /api/workspaces           → create workspace
-    - GET    /api/workspaces           → list all
-    - GET    /api/workspaces/{id}      → get details of one workspace
-    - POST   /api/workspaces/{id}/start  → restart stopped workspace or start the new workspace
-    - POST   /api/workspaces/{id}/stop   → stop workspace (keep data)
-    - DELETE /api/workspaces/{id}      → destroy workspace
-    - POST   /api/workspaces/{id}/heartbeat → mark workspace as active
-    - GET    /health                   → liveness check
+## API Overview
 
-### Create a workspace
+Base URL: `http://localhost:8000`
 
-```bash
-curl -s -X POST http://localhost:8000/api/workspaces \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": "Vansh"}' | jq .
+- `POST /api/workspaces` create workspace (returns bootstrap token)
+- `GET /api/workspaces` list workspace metadata (token hidden)
+- `GET /api/workspaces/{id}` workspace details
+- `POST /api/workspaces/{id}/start` start or restore
+- `POST /api/workspaces/{id}/stop` stop runtime (keep data)
+- `POST /api/workspaces/{id}/heartbeat` mark active
+- `DELETE /api/workspaces/{id}` soft delete
+- `DELETE /api/workspaces/{id}?purge=true` hard delete + volume purge
+- `GET /health` liveness
+- `GET /metrics` Prometheus metrics
+
+### Auth Model (Current)
+
+- Read endpoints are open by default.
+- If `API_KEY` is configured, mutation endpoints require header:
+
+```text
+X-API-Key: <your-api-key>
 ```
-
-Response:
-```json
-{
-  "id": "de6f748c",
-  "token": "YUSsOy1ubLp-FwMphKXqhg",
-  "user_id": "Vansh",
-  "container_id": "9ed6a7218bd92838d5f999d05a96642d8fe135b5121e6d7728ce8c9539f68813",
-  "port": 9000,
-  "status": "running",
-  "created_at": "2026-03-13T09:08:41.316470+00:00",
-  "last_active": "2026-03-13T09:08:41.316470+00:00",
-  "url": "http://localhost:9000/?folder=/home/coder/project"
-}
-```
-
-Open the `url` in your browser → VS Code in the browser! Password: `devpass123`
-
-### Create a second workspace
-
-```bash
-curl -s -X POST http://localhost:8000/api/workspaces \
-  -H "Content-Type: application/json" \
-  -d '{"user_id": "Vardan"}' | jq .
-```
-
-### List all workspaces
-
-```bash
-curl -s http://localhost:8000/api/workspaces | jq .
-```
-
-### Stop a workspace (preserve data)
-
-```bash
-curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/stop | jq .
-```
-
-### Restart a stopped workspace (data is still there!)
-
-```bash
-curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/start | jq .
-```
-
-### Delete a workspace
-
-```bash
-# Keep volume (can restart later)
-curl -s -X DELETE http://localhost:8000/api/workspaces/<workspace_id>
-
-# Purge everything including stored code
-curl -s -X DELETE "http://localhost:8000/api/workspaces/<workspace_id>?purge=true"
-```
-
-### Heartbeat (keep alive)
-
-```bash
-curl -s -X POST http://localhost:8000/api/workspaces/<workspace_id>/heartbeat
-```
-
----
-
-## Proving Resource Limits
-
-```bash
-docker stats --no-stream | grep vs-
-```
-
-Output shows each workspace container capped at the configured CPU/memory limits:
-
-```
-CONTAINER ID   NAME           CPU %   MEM USAGE / LIMIT   MEM %
-e222fe8aa2f8   vs-c357bf7d    0.00%   35.45MiB / 512MiB   6.92%
-9ed6a7218bd9   vs-de6f748c    0.53%   240MiB / 512MiB     46.87%
-```
-
----
-
-## Idle Timeout
-
-- Background reaper runs every 60 seconds.
-- Any workspace with no heartbeat for **30 minutes** (configurable via `VS_IDLE_TIMEOUT_MIN`) is automatically stopped.
-- Data is preserved — only the container is stopped.
-
----
 
 ## Configuration
 
-| Variable              | Default                       | Description                    |
-|-----------------------|-------------------------------|--------------------------------|
-| `API_PORT`            | `8000`                        | Host port used for the API     |
-| `DOMAIN`              | `localhost`                   | Host domain for workspace URLs |
-| `VS_IMAGE`            | `codercom/code-server:latest` | VS Code server image           |
-| `VS_CPU_LIMIT`        | `0.5`                         | CPU cores per workspace        |
-| `VS_MEM_LIMIT`        | `512m`                        | Memory limit per workspace     |
-| `VS_IDLE_TIMEOUT_MIN` | `30`                          | Minutes before idle cleanup    |
-| `VS_PASSWORD`         | `devpass123`                  | code-server password           |
+| Variable | Default | Purpose |
+|---|---|---|
+| `API_PORT` | `8000` | API publish port |
+| `WEB_PORT` | `3000` | Frontend publish port |
+| `DOMAIN` | `localhost` | Workspace URL domain |
+| `VS_IMAGE` | `codercom/code-server:latest` | Runtime image |
+| `VS_CPU_LIMIT` | `0.5` | CPU cores per workspace |
+| `VS_MEM_LIMIT` | `512m` | Memory limit per workspace |
+| `VS_IDLE_TIMEOUT_MIN` | `30` | Auto-stop timeout |
+| `VS_PASSWORD` | `change-me` | code-server password |
+| `API_KEY` | empty | Optional mutation auth |
+| `CORS_ALLOW_ORIGINS` | `*` | CORS allowlist |
+| `RATE_LIMIT_WINDOW_SEC` | `60` | Rate limit window |
+| `RATE_LIMIT_CREATE_PER_WINDOW` | `5` | Max creates/window/IP |
 
----
+## Production Deployment Notes
 
-## Project Structure
+This repo is currently optimized for **single-node deployment**. For production:
 
-```
-.
-├── frontend/
-│   ├── Dockerfile          # Static Nginx frontend image
-│   ├── app.js              # Browser dashboard logic
-│   ├── index.html          # UI shell
-│   ├── nginx.conf          # Proxy /api to backend
-│   └── styles.css          # Modern visual design
-├── api/
-│   ├── Dockerfile          # Build API container
-│   ├── requirements.txt
-│   └── app/
-│       ├── main.py            # FastAPI endpoints
-│       ├── docker_manager.py  # Docker create or delete containers
-│       ├── db.py              # Database
-│       ├── idle_reaper.py     # Removes idle workspaces
-│       └── schemas.py         
-├── infra/                     
-├── .github/
-│   └── workflows/
-│       └── main.yml          
-├── tests/
-│   └── test_api.py
-├── docker-compose.yml        
-├── .env
-├── .env.example
-└── README.md
-```
+- Put API + frontend behind TLS ingress (Nginx/Traefik/ALB)
+- Do not expose workspace ports directly on public internet without access controls
+- Replace static `VS_PASSWORD` model with per-workspace secret/token flow
+- Use managed Postgres instead of SQLite for concurrency + durability
+- Move reaper into a dedicated worker/cron component
+- Add centralized logs + tracing + alerting
+- Restrict Docker socket access or isolate runtime orchestration service
 
-## Frontend
+## CI/CD
 
-The repo now includes a real user-facing dashboard at `http://localhost:3000`.
+GitHub Actions pipeline:
 
-It lets users:
+- Lint + tests on PRs
+- Build frontend image validation on PRs
+- Build and push API image on `main` pushes
 
-- Create a workspace from the homepage.
-- See live workspace cards with status, port, timestamps, and browser IDE URL.
-- Open the workspace instantly.
-- Start, stop, heartbeat, delete, or purge a workspace.
-- Refresh live state without touching the API directly.
+## Observability
 
-The frontend runs behind Nginx and proxies `/api` to the FastAPI service, so users only need one clean site.
+- Health checks in API and frontend containers
+- Prometheus metric: `cloudide_workspace_operations_total{operation,outcome}`
 
----
+## Security Considerations
 
-## Optional: CI/CD
+Current repo improvements include:
 
-GitHub Actions pipeline (`.github/workflows/main.yml`):
-- **On PR**: Lint (`ruff check api/`)
-- **On PR**: Tests (`pytest -q`)
-- **On push to main**: Build Docker image -> push to Docker Hub
+- Token no longer exposed in list/details APIs
+- Optional API key auth gate for mutation operations
+- Input validation for workspace user IDs
+- Basic frontend security headers
+- Safer Docker runtime exception handling
 
----
+Still recommended before internet-scale exposure:
 
-## Trade-offs & Design Decisions
+- OAuth/JWT with user-scoped authorization
+- Per-workspace signed access URL or reverse proxy auth
+- Secret manager integration (not `.env` in runtime)
+- Network policies and egress restrictions
 
-| Decision                 | Rationale                                                                                                |
-|--------------------------|----------------------------------------------------------------------------------------------------------|
-| **SQLite over Postgres** | Zero-dependency, perfect for single-node.                                                                |
-| **Docker SDK**           | API container manages workspace containers via mounted Docker socket. Simple, effective for single-host. |
-| **Port-per-workspace**   | Each workspace gets a unique port (9000+). Simple routing without reverse proxy complexity.              |
-| **In-process reaper**    | APScheduler background thread. Production: separate worker or CronJob.                                   |
-| **code-server image**    | Tested the full VS Code experience, easy to configure.                                                   |
+## Demo Section
 
-## What I'd Improve With More Time
+Add your live links here before sharing on resume:
 
-1. **Authentication** — JWT/OAuth so users can only access their own workspaces.
-2. **Workspace templates** — pre-configured environments (Node, Python, Go, etc.).
-3. **Monitoring** — Prometheus metrics, Grafana dashboard for active workspaces.
-4. **WebSocket activity tracking** — detect real IDE usage instead of relying on heartbeat.
-5. **Rate limiting** — prevent maximum workspace limits per user.
-6. **Backup** — periodic volume snapshots.
+- Live App: `<your-live-frontend-url>`
+- Live API Docs: `<your-live-api-url>/docs`
+- Metrics Endpoint (protected/internal): `<your-live-api-url>/metrics`
+- Short Demo Video/GIF: `<link>`
 
----
+## Screenshots
+
+Add screenshots to `docs/images/` and link here:
+
+- Dashboard overview
+- Workspace lifecycle actions
+- Running code-server instance
+
+## Future Enhancements
+
+- Redis-backed distributed rate limiter and caching
+- Queue-based provisioning workers (Celery/RQ + Redis/RabbitMQ)
+- Multi-tenant RBAC and quotas per user/org
+- Reverse proxy per-workspace subdomain routing
+- Snapshot/restore for workspace volumes
+- Horizontal API scaling with shared datastore

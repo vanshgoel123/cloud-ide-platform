@@ -13,6 +13,8 @@ def _conn() -> sqlite3.Connection:
         os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
         _local.conn = sqlite3.connect(DB_PATH)
         _local.conn.row_factory = sqlite3.Row
+        _local.conn.execute("PRAGMA journal_mode=WAL")
+        _local.conn.execute("PRAGMA busy_timeout=5000")
     return _local.conn
 
 
@@ -34,6 +36,8 @@ def init_db():
     columns = {row[1] for row in c.execute("PRAGMA table_info(workspaces)").fetchall()}
     if "deleted_at" not in columns:
         c.execute("ALTER TABLE workspaces ADD COLUMN deleted_at TEXT")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_workspaces_status ON workspaces(status)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_workspaces_last_active ON workspaces(last_active)")
     c.commit()
 
 

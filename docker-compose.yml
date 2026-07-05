@@ -2,6 +2,7 @@ services:
   api:
     build: ./api
     container_name: cloudide-api
+    restart: unless-stopped
     ports:
       - "${API_PORT:-8000}:8000"
     volumes:
@@ -14,20 +15,38 @@ services:
       - VS_MEM_LIMIT=${VS_MEM_LIMIT:-512m}
       - VS_IDLE_TIMEOUT_MIN=${VS_IDLE_TIMEOUT_MIN:-30}
       - VS_PASSWORD=${VS_PASSWORD:-devpass123}
+      - API_KEY=${API_KEY:-}
+      - CORS_ALLOW_ORIGINS=${CORS_ALLOW_ORIGINS:-*}
+      - RATE_LIMIT_WINDOW_SEC=${RATE_LIMIT_WINDOW_SEC:-60}
+      - RATE_LIMIT_CREATE_PER_WINDOW=${RATE_LIMIT_CREATE_PER_WINDOW:-5}
       - DB_PATH=/data/workspaces.db
       - DOCKER_NETWORK=cloudide_net
     networks:
       - cloudide_net
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   frontend:
     build: ./frontend
     container_name: cloudide-frontend
+    restart: unless-stopped
     ports:
       - "${WEB_PORT:-3000}:80"
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     networks:
       - cloudide_net
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 networks:
   cloudide_net:
