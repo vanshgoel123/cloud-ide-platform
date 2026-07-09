@@ -2,6 +2,7 @@ services:
   api:
     build: ./api
     container_name: cloudide-api
+    user: root
     restart: unless-stopped
     ports:
       - "${API_PORT:-8000}:8000"
@@ -35,7 +36,7 @@ services:
     container_name: cloudide-frontend
     restart: unless-stopped
     ports:
-      - "${WEB_PORT:-3000}:80"
+      - "${WEB_PORT:-80}:80"
     depends_on:
       api:
         condition: service_healthy
