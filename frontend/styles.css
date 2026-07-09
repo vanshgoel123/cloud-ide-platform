@@ -597,3 +597,322 @@ h3 {
     width: 100%;
   }
 }
+/* ==================================================
+   RESPONSIVE LAYOUT FIX
+   Cloud IDE Platform
+   Add at END of file
+   ================================================== */
+
+
+/* ---------- Global ---------- */
+
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+
+/* ---------- Main Container ---------- */
+
+.shell {
+  position: relative;
+
+  width: min(1180px, 94%);
+
+  max-width: none;
+
+  margin: 0 auto;
+
+  padding: 22px 0;
+}
+
+
+/* ---------- Background glow fix ---------- */
+
+.ambient-b {
+
+  right: 0;
+
+}
+
+
+/* ---------- Header Section ---------- */
+
+.topbar {
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    260px;
+
+  gap: 20px;
+
+  align-items: start;
+
+  margin-bottom: 22px;
+}
+
+
+/* ---------- Main Title ---------- */
+
+h1 {
+
+  max-width: 15ch;
+
+  font-size: clamp(
+    2.5rem,
+    3.6vw,
+    4rem
+  );
+
+  line-height: 1.05;
+
+}
+
+
+/* ---------- Text ---------- */
+
+.lede {
+
+  max-width: 60ch;
+
+  font-size: 1rem;
+
+  line-height: 1.65;
+
+}
+
+
+/* ---------- API Status Card ---------- */
+
+.status-card {
+
+  width: 100%;
+
+  max-width: 260px;
+
+}
+
+
+/* ---------- Top Feature Grid ---------- */
+
+.hero-grid {
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0,1.2fr)
+    minmax(280px,0.8fr);
+
+  gap:22px;
+
+  margin-bottom:22px;
+
+}
+
+
+/* ---------- Cards ---------- */
+
+.hero-card,
+.panel {
+
+  width:100%;
+
+}
+
+
+/* ---------- Stats Cards ---------- */
+
+.metrics {
+
+  display:grid;
+
+  grid-template-columns:
+    repeat(
+      auto-fit,
+      minmax(140px,1fr)
+    );
+
+  gap:14px;
+
+}
+
+
+.metrics div {
+
+  padding:16px;
+
+}
+
+
+.metrics strong {
+
+  font-size:1.7rem;
+
+}
+
+
+/* ---------- Workflow ---------- */
+
+.steps {
+
+  display:grid;
+
+  grid-template-columns:
+    1fr auto 1fr auto 1fr;
+
+  gap:12px;
+
+}
+
+
+/* ---------- Bottom Layout ---------- */
+
+.content-grid {
+
+  display:grid;
+
+  grid-template-columns:
+    minmax(0,1fr)
+    320px;
+
+  gap:22px;
+
+}
+
+
+/* ---------- Workspace Cards ---------- */
+
+.workspace-link,
+.workspace-card {
+
+  max-width:100%;
+
+}
+
+
+/* ---------- Laptop ---------- */
+
+@media(max-width:1200px){
+
+
+  .shell{
+
+    width:92%;
+
+  }
+
+
+  h1{
+
+    font-size:
+      clamp(2.4rem,4vw,3.8rem);
+
+  }
+
+}
+
+
+
+/* ---------- Tablet ---------- */
+
+@media(max-width:900px){
+
+
+  .topbar,
+  .hero-grid,
+  .content-grid{
+
+    grid-template-columns:1fr;
+
+  }
+
+
+  .status-card{
+
+    max-width:100%;
+
+  }
+
+
+  .panel--guide{
+
+    position:static;
+
+  }
+
+
+}
+
+
+
+/* ---------- Mobile ---------- */
+
+@media(max-width:600px){
+
+
+  .shell{
+
+    width:94%;
+
+    padding:16px 0;
+
+  }
+
+
+  h1{
+
+    max-width:none;
+
+    font-size:2.4rem;
+
+  }
+
+
+  .metrics,
+  .workspace-meta,
+  .steps{
+
+    grid-template-columns:1fr;
+
+  }
+
+
+  .steps .arrow{
+
+    display:none;
+
+  }
+
+
+  .workspace-link,
+  .section-heading,
+  .hero-card__header,
+  .inline-hint{
+
+    flex-direction:column;
+
+    align-items:flex-start;
+
+  }
+
+
+  .workspace-actions{
+
+    display:grid;
+
+    width:100%;
+
+  }
+
+
+  button{
+
+    width:100%;
+
+  }
+
+}
