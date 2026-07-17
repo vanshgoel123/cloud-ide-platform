@@ -6,6 +6,8 @@ Production-oriented platform to provision isolated browser-based VS Code workspa
 
 This system demonstrates end-to-end software engineering across backend design, container orchestration, frontend operations UX, CI/CD, and production hardening.
 
+🚀 **Live Demo:** https://rolled-kyle-queen-stylish.trycloudflare.com/
+
 ## Core Features
 
 - One-click workspace provisioning using Dockerized code-server
