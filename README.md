@@ -12,7 +12,7 @@ This system demonstrates end-to-end software engineering across backend design, 
 
 Watch the complete demo here:
 
-[▶️ Cloud IDE Platform Demo](demo.mp4)
+[▶️ Cloud IDE Platform Demo]([demo.mp4](https://github.com/user-attachments/assets/b75c639e-39d7-4a63-b40d-fbfa8596e08a))
 
 ## Core Features
 
