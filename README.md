@@ -8,9 +8,11 @@ This system demonstrates end-to-end software engineering across backend design, 
 
 🚀 **Live Demo:** https://rolled-kyle-queen-stylish.trycloudflare.com/
 
-## 🎥 Demo
+## 🎥 Project Demo
 
-https://github.com/vanshgoel123/cloud-ide-platform/blob/main/Built%20my%20own%20Cloud%20IDE%20Platform%20%E2%98%81%EF%B8%8F%F0%9F%92%BB%20Launch%20browser-based%20coding%20environments%20in%20one%20click%20%F0%9F%9A%80%20(2).mp4
+Watch the complete demo here:
+
+[▶️ Cloud IDE Platform Demo](demo.mp4)
 
 ## Core Features
 
