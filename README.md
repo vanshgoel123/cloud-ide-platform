@@ -6,7 +6,6 @@ Production-oriented platform to provision isolated browser-based VS Code workspa
 
 This system demonstrates end-to-end software engineering across backend design, container orchestration, frontend operations UX, CI/CD, and production hardening.
 
-🚀 **Live Demo:** https://rolled-kyle-queen-stylish.trycloudflare.com/
 
 ## 🎥 Project Demo
 
