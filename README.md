@@ -6,12 +6,13 @@ Production-oriented platform to provision isolated browser-based VS Code workspa
 
 This system demonstrates end-to-end software engineering across backend design, container orchestration, frontend operations UX, CI/CD, and production hardening.
 
-
+<!--
 ## 🎥 Project Demo
 
 Watch the complete demo here:
 
 [demo.mp4](https://github.com/user-attachments/assets/b75c639e-39d7-4a63-b40d-fbfa8596e08a)
+-->
 
 ## Core Features
 
