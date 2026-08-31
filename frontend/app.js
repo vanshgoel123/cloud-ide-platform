@@ -76,6 +76,9 @@ const R = {
   heroUserId:        $("hero-user-id"),
   heroPassword:      $("hero-password"),
   heroCreateBtn:     $("hero-create-btn"),
+  // Theme
+  themeToggleLanding: $("theme-toggle-landing"),
+  themeToggleDash:    $("theme-toggle-dash"),
 };
 
 /* ── API helper ─────────────────────────────────────────────────────────── */
@@ -142,14 +145,18 @@ function btnReset(btn) {
   if (btn._orig) { btn.innerHTML = btn._orig; delete btn._orig; }
 }
 
-/* ── Routing ────────────────────────────────────────────────────────────── */
+/* ── Routing ────────────────────────────────────────────────────────────────── */
 function showDashboard() {
-  R.landing.classList.add("hidden");
-  R.dashboard.classList.remove("hidden");
+  R.landing.classList.remove("page-active");
+  R.landing.classList.add("page-hidden");
+  R.dashboard.classList.remove("page-hidden");
+  R.dashboard.classList.add("page-active");
 }
 function showLanding() {
-  R.dashboard.classList.add("hidden");
-  R.landing.classList.remove("hidden");
+  R.dashboard.classList.remove("page-active");
+  R.dashboard.classList.add("page-hidden");
+  R.landing.classList.remove("page-hidden");
+  R.landing.classList.add("page-active");
 }
 
 function switchTab(tab) {
@@ -185,6 +192,15 @@ function updateStats(online) {
     R.delBadge.hidden = false;
   } else {
     R.delBadge.hidden = true;
+  }
+
+  // Update the live count pill on the landing nav
+  const navCount = document.getElementById("nav-ws-count");
+  if (navCount) {
+    const activeCount = ws.filter(w => w.status !== "deleted").length;
+    navCount.textContent = activeCount === 0
+      ? "No workspaces"
+      : `${activeCount} workspace${activeCount === 1 ? "" : "s"} active`;
   }
 
   if (online !== undefined) {
@@ -230,6 +246,7 @@ function buildCard(ws) {
   }
 
   el.innerHTML = `
+    <div class="card-band card-band--${ws.status}"></div>
     <div class="card-top">
       <div style="display:flex;align-items:center;gap:12px;min-width:0">
         <div class="card-avatar card-avatar--${ws.status}">${esc(letter)}</div>
@@ -293,9 +310,7 @@ async function loadWorkspaces(silent = false) {
     S.workspaces = workspaces || [];
     updateStats(health?.ok === true);
     render();
-
-    // Auto-show dashboard if user has workspaces
-    if (S.workspaces.length > 0) showDashboard();
+    // No auto-navigation — user decides when to go to the dashboard
   } catch (err) {
     updateStats(false);
     if (!silent) toast(`Could not load workspaces: ${err.message}`, "error");
@@ -476,6 +491,7 @@ R.createForm?.addEventListener("submit", async e => {
   // Show success screen
   R.createForm.hidden    = true;
   R.createSuccess.hidden = false;
+  spawnConfetti();
   const url = ws.url || "#";
   R.successUrl.href        = url;
   R.successUrl.textContent = url;
@@ -505,6 +521,7 @@ R.heroCreateBtn?.addEventListener("click", async () => {
   openCreateModal();
   R.createForm.hidden    = true;
   R.createSuccess.hidden = false;
+  spawnConfetti();
   const url = ws.url || "#";
   R.successUrl.href        = url;
   R.successUrl.textContent = url;
@@ -515,9 +532,41 @@ R.heroCreateBtn?.addEventListener("click", async () => {
 
 R.landingGoDash?.addEventListener("click", showDashboard);
 
-/* ── Sidebar nav ────────────────────────────────────────────────────────── */
+/* ── Confetti burst ─────────────────────────────────────────────────────── */
+function spawnConfetti() {
+  const container = document.getElementById("confetti-c");
+  if (!container) return;
+  const colors = [
+    "#6366f1","#10b981","#f59e0b","#3b82f6","#f43f5e",
+    "#a78bfa","#34d399","#fb923c","#e879f9","#22d3ee"
+  ];
+  container.innerHTML = "";
+  for (let i = 0; i < 42; i++) {
+    const p = document.createElement("span");
+    p.className = "confetti-piece";
+    const size = 4 + Math.random() * 8;
+    p.style.cssText = [
+      `left:${Math.random() * 100}%`,
+      `width:${size}px`,
+      `height:${size * (0.8 + Math.random())}px`,
+      `background:${colors[i % colors.length]}`,
+      `animation-delay:${(Math.random() * 0.8).toFixed(2)}s`,
+      `animation-duration:${(0.7 + Math.random() * 0.8).toFixed(2)}s`,
+      `border-radius:${Math.random() > 0.55 ? "50%" : "2px"}`,
+      `transform:rotate(${Math.floor(Math.random() * 360)}deg)`,
+    ].join(";");
+    container.appendChild(p);
+  }
+}
+
+
+
+/* ── Sidebar nav ───────────────────────────────────────────────────────────────── */
 QA(".sidebar-nav-item").forEach(btn => {
-  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+  btn.addEventListener("click", () => {
+    if (btn.dataset.action === "home") { showLanding(); return; }
+    if (btn.dataset.tab) switchTab(btn.dataset.tab);
+  });
 });
 
 /* ── Mobile sidebar ──────────────────────────────────────────────────────── */
@@ -529,6 +578,25 @@ document.addEventListener("click", e => {
     R.sidebar.classList.remove("open");
   }
 });
+
+/* ── Theme (Light / Dark) ─────────────────────────────────────────────────── */
+function getTheme() {
+  return document.documentElement.dataset.theme || localStorage.getItem("cide-theme") || "dark";
+}
+
+function setTheme(theme) {
+  document.documentElement.dataset.theme = theme;
+  localStorage.setItem("cide-theme", theme);
+}
+
+function toggleTheme() {
+  const current = getTheme();
+  const next = current === "light" ? "dark" : "light";
+  setTheme(next);
+}
+
+R.themeToggleLanding?.addEventListener("click", toggleTheme);
+R.themeToggleDash?.addEventListener("click", toggleTheme);
 
 /* ── Refresh ─────────────────────────────────────────────────────────────── */
 R.refreshBtn?.addEventListener("click", () => loadWorkspaces(false));
@@ -546,8 +614,16 @@ setInterval(() => loadWorkspaces(true), 15_000);
 
 /* ── Boot ────────────────────────────────────────────────────────────────── */
 (async () => {
-  await loadWorkspaces(false);
-  // If no workspaces, stay on landing; otherwise show dashboard
-  if (S.workspaces.length === 0) showLanding();
-  else showDashboard();
+  // Clean up splash overlay after animation
+  const splash = $("intro-splash");
+  if (splash) {
+    setTimeout(() => {
+      splash.remove();
+    }, 1500);
+  }
+
+  // Always start on the landing page — user navigates to dashboard explicitly
+  showLanding();
+  // Load workspaces silently in background so stats are up-to-date
+  await loadWorkspaces(true);
 })();

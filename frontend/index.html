@@ -3,122 +3,324 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="theme-color" content="#0d0f14" />
-  <title>Cloud IDE — Your browser-based VS Code</title>
+  <meta name="theme-color" content="#080b14" />
+  <meta name="description" content="Cloud IDE — Your personal VS Code environment in the browser. Create isolated workspaces in seconds. No install needed." />
+  <title>Cloud IDE — VS Code in your browser</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+  <link rel="shortcut icon" href="/favicon.svg" />
+  <!-- Theme FOUC prevention: read localStorage before first paint -->
+  <script>document.documentElement.dataset.theme=localStorage.getItem('cide-theme')||'dark';</script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
 
-  <!-- Noise texture overlay -->
-  <div class="noise" aria-hidden="true"></div>
+  <!-- ═══════════════════════════════════════════════════════
+       INTRO SPLASH REVEAL ANIMATION
+       Shows brand logo centered, pulses, then zooms smoothly to reveal page
+       ════════════════════════════════════════════════════════ -->
+  <div id="intro-splash" class="intro-splash" aria-hidden="true">
+    <div class="splash-glow"></div>
+    <div class="splash-content">
+      <div class="splash-icon-wrapper">
+        <div class="splash-pulse-ring"></div>
+        <div class="splash-pulse-ring-2"></div>
+        <div class="splash-icon">
+          <svg viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="9" fill="url(#splash-grad)"/>
+            <defs>
+              <linearGradient id="splash-grad" x1="0" y1="0" x2="32" y2="32">
+                <stop stop-color="#2563eb"/>
+                <stop offset="1" stop-color="#7c3aed"/>
+              </linearGradient>
+            </defs>
+            <path d="M7 21 L12 11 L17 18 L21 13.5" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="21" cy="10.5" r="2.5" fill="#60a5fa"/>
+          </svg>
+        </div>
+      </div>
+      <div class="splash-brand-text">
+        <span class="splash-title">Cloud IDE</span>
+        <span class="splash-subtitle">Personal Cloud Coding Environment</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Particle canvas background -->
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
 
   <!-- ═══════════════════════════════════════════════════════
-       LANDING HERO — shown when no workspaces / on first load
-       (hides once user has workspaces and clicks "Go to Dashboard")
+       LANDING PAGE — always shown on first load
        ════════════════════════════════════════════════════════ -->
-  <div id="landing" class="landing">
+  <div id="landing" class="landing page-active">
 
-    <!-- Top nav -->
-    <nav class="landing-nav">
+    <!-- Sticky glass nav -->
+    <nav class="landing-nav glass-nav" id="landing-nav">
       <div class="brand">
         <div class="brand-icon">
-          <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 19 L12 9 L17 16 L20.5 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20.5" cy="9" r="2.2" fill="#60a5fa"/></svg>
+          <svg viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="9" fill="url(#brand-grad)"/>
+            <defs>
+              <linearGradient id="brand-grad" x1="0" y1="0" x2="32" y2="32">
+                <stop stop-color="#2563eb"/>
+                <stop offset="1" stop-color="#7c3aed"/>
+              </linearGradient>
+            </defs>
+            <path d="M8 22 L13 10 L18 18 L22 13" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="22" cy="10.5" r="2.5" fill="#60a5fa"/>
+          </svg>
         </div>
         <span class="brand-name">Cloud IDE</span>
       </div>
-      <button class="nav-cta" id="landing-go-dashboard">Open Dashboard →</button>
-    </nav>
-
-    <!-- Hero section -->
-    <div class="hero">
-      <div class="hero-badge">✦ VS Code in your browser</div>
-      <h1 class="hero-title">
-        Your personal<br/>
-        <span class="gradient-text">coding environment</span><br/>
-        anywhere.
-      </h1>
-      <p class="hero-desc">
-        Create an isolated VS Code workspace in seconds. Your own password, your own files, accessible from any browser — no install needed.
-      </p>
-
-      <!-- Inline create form on the hero -->
-      <div class="hero-form" id="hero-form">
-        <div class="hero-form-fields">
-          <input class="hero-input" id="hero-user-id" type="text" placeholder="Workspace name  (e.g. vansh)" autocomplete="off" maxlength="64" />
-          <input class="hero-input" id="hero-password" type="password" placeholder="Your password (min 6 chars)" autocomplete="new-password" maxlength="128" />
+      <div class="nav-right">
+        <div class="nav-stats-pill" id="nav-live">
+          <span class="live-dot"></span>
+          <span class="live-text" id="nav-ws-count">Loading…</span>
         </div>
-        <button class="hero-btn" id="hero-create-btn" type="button">
-          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
-          Create workspace
+        <button class="theme-toggle" id="theme-toggle-landing" aria-label="Toggle theme" title="Toggle light/dark mode">
+          <span class="theme-toggle-track">
+            <span class="theme-toggle-thumb"></span>
+          </span>
+          <span class="theme-toggle-icon theme-toggle-icon--sun" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
+          </span>
+          <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+          </span>
+        </button>
+        <button class="nav-cta" id="landing-go-dashboard">
+          Dashboard
+          <svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M1 8a.5.5 0 01.5-.5h11.793L9.146 3.354a.5.5 0 11.708-.708l5 5a.5.5 0 010 .708l-5 5a.5.5 0 01-.708-.708L13.293 8.5H1.5A.5.5 0 011 8z" clip-rule="evenodd"/></svg>
         </button>
       </div>
-      <p class="hero-hint">Password protects your workspace — only you can log in.</p>
-    </div>
+    </nav>
 
-    <!-- How it works — visual flow -->
-    <div class="how-it-works">
-      <p class="section-label">How it works</p>
+    <!-- Hero -->
+    <section class="hero">
+
+      <div class="hero-eyebrow">
+        <span class="eyebrow-dot"></span>
+        VS Code &nbsp;·&nbsp; Zero Install &nbsp;·&nbsp; Instant
+      </div>
+
+      <h1 class="hero-title">
+        <span class="title-line">Your personal</span>
+        <span class="title-line shimmer-text" id="typed-text">coding environment</span>
+        <span class="title-line">anywhere.</span>
+      </h1>
+
+      <p class="hero-desc">
+        Spin up a private, password-protected VS Code workspace in seconds.<br/>
+        Your files persist. Code from any device. No setup required.
+      </p>
+
+      <!-- Glassmorphism hero card -->
+      <div class="hero-glass-card" id="hero-form">
+        <div class="hero-card-header">
+          <div class="hero-card-icon">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+          </div>
+          <div>
+            <div class="hero-card-title">Create your workspace</div>
+            <div class="hero-card-sub">Ready in under 30 seconds</div>
+          </div>
+        </div>
+
+        <div class="hero-form-fields">
+          <div class="hero-field-group">
+            <label class="hero-field-label" for="hero-user-id">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm-5 6s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1H3z"/></svg>
+              Workspace name
+            </label>
+            <input class="hero-input" id="hero-user-id" type="text" placeholder="e.g. vansh, myproject" autocomplete="off" maxlength="64" />
+          </div>
+          <div class="hero-field-group">
+            <label class="hero-field-label" for="hero-password">
+              <svg viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 1a4 4 0 00-4 4v1H3a1 1 0 00-1 1v7a1 1 0 001 1h10a1 1 0 001-1V7a1 1 0 00-1-1h-1V5a4 4 0 00-4-4zm2 5V5a2 2 0 10-4 0v1h4zm-6 3a1 1 0 112 0 1 1 0 01-2 0zm7-1a1 1 0 100 2 1 1 0 000-2z" clip-rule="evenodd"/></svg>
+              Password <span class="hero-field-hint">(min 6 chars)</span>
+            </label>
+            <input class="hero-input" id="hero-password" type="password" placeholder="Set a strong password" autocomplete="new-password" maxlength="128" />
+          </div>
+        </div>
+
+        <button class="hero-btn" id="hero-create-btn" type="button">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clip-rule="evenodd"/></svg>
+          Launch workspace
+        </button>
+        <p class="hero-hint">🔒 Password-protected &mdash; only you can log in.</p>
+      </div>
+
+    </section>
+
+    <!-- Feature cards -->
+    <section class="features">
+      <p class="section-eyebrow">Why Cloud IDE?</p>
+      <div class="feature-grid">
+
+        <div class="feature-card feature-card--blue">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="2" y="3" width="20" height="14" rx="2.5"/>
+              <path d="M8 21h8M12 17v4"/>
+              <path d="M7 8l2 2-2 2M11 12h4" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Full VS Code</h3>
+          <p>Real code-server with extensions, terminal, Git, and all the power you expect.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card feature-card--purple">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Password Protected</h3>
+          <p>Each workspace is secured with your own password. Only you can access it.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card feature-card--green">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <ellipse cx="12" cy="5" rx="9" ry="3"/>
+              <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+              <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Persistent Storage</h3>
+          <p>Your files survive restarts. Stop anytime, come back later — everything's still there.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card feature-card--amber">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h3>Instant Start</h3>
+          <p>Container spins up in under 30 seconds. Stop it to save resources, restart anytime.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card feature-card--cyan">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Code from Anywhere</h3>
+          <p>Browser-based. Works on any device — laptop, tablet, phone. Zero install.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+        <div class="feature-card feature-card--rose">
+          <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h3>Live Monitoring</h3>
+          <p>Real-time status updates, idle detection, and auto-cleanup to keep things tidy.</p>
+          <div class="feature-glow"></div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- How it works -->
+    <section class="how-it-works">
+      <p class="section-eyebrow">How it works</p>
       <div class="flow-steps">
         <div class="flow-step">
-          <div class="flow-step-num">1</div>
+          <div class="flow-step-num">01</div>
           <div class="flow-step-icon">✏️</div>
           <h3>Name it</h3>
-          <p>Give your workspace a name and set your personal password.</p>
+          <p>Give your workspace a unique name and set your personal password.</p>
         </div>
-        <div class="flow-arrow">→</div>
+        <div class="flow-connector">
+          <div class="flow-connector-line"></div>
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 5H16l-4.5 3.5 1.5 5L8 11l-5 2.5 1.5-5L0 5h6.5z"/></svg>
+        </div>
         <div class="flow-step">
-          <div class="flow-step-num">2</div>
+          <div class="flow-step-num">02</div>
           <div class="flow-step-icon">⚡</div>
           <h3>Launch</h3>
-          <p>We spin up a private VS Code container just for you.</p>
+          <p>We spin up a private VS Code container in seconds.</p>
         </div>
-        <div class="flow-arrow">→</div>
+        <div class="flow-connector">
+          <div class="flow-connector-line"></div>
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 5H16l-4.5 3.5 1.5 5L8 11l-5 2.5 1.5-5L0 5h6.5z"/></svg>
+        </div>
         <div class="flow-step">
-          <div class="flow-step-num">3</div>
+          <div class="flow-step-num">03</div>
           <div class="flow-step-icon">💻</div>
           <h3>Code</h3>
           <p>Open the link, enter your password, and start building.</p>
         </div>
-        <div class="flow-arrow">→</div>
+        <div class="flow-connector">
+          <div class="flow-connector-line"></div>
+          <svg viewBox="0 0 16 16" fill="currentColor"><path d="M8 0l1.5 5H16l-4.5 3.5 1.5 5L8 11l-5 2.5 1.5-5L0 5h6.5z"/></svg>
+        </div>
         <div class="flow-step">
-          <div class="flow-step-num">4</div>
+          <div class="flow-step-num">04</div>
           <div class="flow-step-icon">💾</div>
-          <h3>Files saved</h3>
-          <p>Stop anytime — your code is persisted. Resume whenever.</p>
+          <h3>Persist</h3>
+          <p>Stop anytime — your code is safely persisted. Resume whenever.</p>
         </div>
       </div>
-    </div>
+    </section>
+
+    <footer class="landing-footer">
+      <p>Cloud IDE &mdash; Your browser-based VS Code environment</p>
+    </footer>
 
   </div><!-- /landing -->
 
 
   <!-- ═══════════════════════════════════════════════════════
-       DASHBOARD — the main workspace management panel
+       DASHBOARD — workspace management panel
        ════════════════════════════════════════════════════════ -->
-  <div id="dashboard" class="dashboard hidden">
+  <div id="dashboard" class="dashboard page-hidden">
 
     <!-- Sidebar -->
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-top">
         <div class="brand sidebar-brand">
           <div class="brand-icon">
-            <svg viewBox="0 0 28 28" fill="none"><rect width="28" height="28" rx="7" fill="#2563eb"/><path d="M7 19 L12 9 L17 16 L20.5 12" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="20.5" cy="9" r="2.2" fill="#60a5fa"/></svg>
+            <svg viewBox="0 0 32 32" fill="none">
+              <rect width="32" height="32" rx="9" fill="url(#brand-grad2)"/>
+              <defs>
+                <linearGradient id="brand-grad2" x1="0" y1="0" x2="32" y2="32">
+                  <stop stop-color="#2563eb"/>
+                  <stop offset="1" stop-color="#7c3aed"/>
+                </linearGradient>
+              </defs>
+              <path d="M8 22 L13 10 L18 18 L22 13" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="22" cy="10.5" r="2.5" fill="#60a5fa"/>
+            </svg>
           </div>
           <span class="brand-name">Cloud IDE</span>
         </div>
 
         <nav class="sidebar-nav">
-          <button class="sidebar-nav-item active" data-tab="workspaces">
+          <button class="sidebar-nav-item active" data-tab="workspaces" id="snav-workspaces">
             <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v8a2 2 0 01-2 2h-2.22l.123.489.804.804A1 1 0 0113 18H7a1 1 0 01-.707-1.707l.804-.804L7.22 15H5a2 2 0 01-2-2V5zm5.771 7H5V5h10v7H8.771z" clip-rule="evenodd"/></svg>
             Workspaces
           </button>
-          <button class="sidebar-nav-item" data-tab="deleted">
+          <button class="sidebar-nav-item" data-tab="deleted" id="snav-deleted">
             <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9z" clip-rule="evenodd"/></svg>
             Deleted
             <span class="sidebar-badge" id="sidebar-deleted-badge" hidden>0</span>
+          </button>
+          <button class="sidebar-nav-item" id="snav-back-landing" data-action="home">
+            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"/></svg>
+            Home
           </button>
         </nav>
       </div>
@@ -145,6 +347,17 @@
           <p class="dash-subtitle" id="tab-subtitle">Your active coding environments</p>
         </div>
         <div class="dash-header-right">
+          <button class="theme-toggle theme-toggle--sm" id="theme-toggle-dash" aria-label="Toggle theme" title="Toggle light/dark mode">
+            <span class="theme-toggle-track">
+              <span class="theme-toggle-thumb"></span>
+            </span>
+            <span class="theme-toggle-icon theme-toggle-icon--sun" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z" clip-rule="evenodd"/></svg>
+            </span>
+            <span class="theme-toggle-icon theme-toggle-icon--moon" aria-hidden="true">
+              <svg viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/></svg>
+            </span>
+          </button>
           <button class="btn-icon-ghost" id="refresh-btn" title="Refresh">
             <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/></svg>
           </button>
@@ -179,7 +392,7 @@
       <!-- Toast zone -->
       <div id="toasts" class="toasts" role="status" aria-live="polite"></div>
 
-      <!-- ── TAB: WORKSPACES ─────────────────────────────────────── -->
+      <!-- TAB: WORKSPACES -->
       <div class="tab-panel active" id="tab-workspaces">
         <div id="ws-empty" class="empty-state" hidden>
           <div class="empty-icon">
@@ -200,7 +413,7 @@
         <div id="ws-grid" class="ws-grid"></div>
       </div>
 
-      <!-- ── TAB: DELETED ────────────────────────────────────────── -->
+      <!-- TAB: DELETED -->
       <div class="tab-panel" id="tab-deleted">
         <div id="del-empty" class="empty-state" hidden>
           <div class="empty-icon">
@@ -323,32 +536,51 @@
         </div>
       </form>
 
-      <!-- Success state (shown after creation) -->
+      <!-- Success state -->
       <div id="create-success" class="create-success" hidden>
+        <!-- Confetti burst -->
+        <div class="confetti-container" id="confetti-c" aria-hidden="true"></div>
+
         <div class="success-animation">
+          <div class="success-outer-ring"></div>
+          <div class="success-mid-ring"></div>
           <div class="success-ring"></div>
-          <svg class="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12l5 5L20 7"/></svg>
+          <svg class="success-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M5 12l5 5L20 7"/>
+          </svg>
         </div>
-        <h3>Workspace launched! 🎉</h3>
-        <p>Your personal VS Code environment is starting up.</p>
+
+        <h3 class="success-title">Workspace launched! 🎉</h3>
+        <p>Your private VS Code is starting up &mdash; ready in seconds.</p>
+
         <div class="success-info-card">
           <div class="success-info-row">
-            <span>IDE URL</span>
-            <a id="success-url" href="#" target="_blank" rel="noopener noreferrer" class="success-link">Open VS Code →</a>
+            <div class="success-info-label">
+              <span class="sinfo-icon">🌐</span><span>IDE URL</span>
+            </div>
+            <a id="success-url" href="#" target="_blank" rel="noopener noreferrer" class="success-link">Open IDE →</a>
           </div>
+          <div class="success-divider"></div>
           <div class="success-info-row">
-            <span>Password</span>
+            <div class="success-info-label">
+              <span class="sinfo-icon">🔒</span><span>Password</span>
+            </div>
             <span class="success-pw-note">The one you just set</span>
           </div>
         </div>
+
         <div class="success-actions">
-          <a id="success-open-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-primary success-open">
-            <svg viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+          <a id="success-open-btn" href="#" target="_blank" rel="noopener noreferrer" class="btn-success-launch">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/>
+              <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/>
+            </svg>
             Open VS Code now
           </a>
           <button class="btn-ghost" id="success-close-btn">Back to dashboard</button>
         </div>
       </div>
+
 
     </div><!-- /modal -->
   </div><!-- /create-modal -->
@@ -376,6 +608,102 @@
       </div>
     </div>
   </div>
+
+  <!-- Particle canvas script -->
+  <script>
+  (function() {
+    const canvas = document.getElementById('bg-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    let W, H, dots = [], animId;
+    const DOT_COUNT = 80, MAX_DIST = 140;
+
+    function resize() {
+      W = canvas.width  = window.innerWidth;
+      H = canvas.height = window.innerHeight;
+    }
+
+    function initDots() {
+      dots = [];
+      for (let i = 0; i < DOT_COUNT; i++) {
+        dots.push({
+          x: Math.random() * W,
+          y: Math.random() * H,
+          vx: (Math.random() - 0.5) * 0.35,
+          vy: (Math.random() - 0.5) * 0.35,
+          r: Math.random() * 1.5 + 0.5
+        });
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, W, H);
+      const isLight = document.documentElement.dataset.theme === 'light';
+      // Move
+      for (const d of dots) {
+        d.x += d.vx; d.y += d.vy;
+        if (d.x < 0) d.x = W; if (d.x > W) d.x = 0;
+        if (d.y < 0) d.y = H; if (d.y > H) d.y = 0;
+      }
+      // Lines
+      for (let i = 0; i < dots.length; i++) {
+        for (let j = i + 1; j < dots.length; j++) {
+          const dx = dots[i].x - dots[j].x, dy = dots[i].y - dots[j].y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < MAX_DIST) {
+            const alpha = (1 - dist / MAX_DIST) * (isLight ? 0.28 : 0.18);
+            ctx.beginPath();
+            ctx.moveTo(dots[i].x, dots[i].y);
+            ctx.lineTo(dots[j].x, dots[j].y);
+            ctx.strokeStyle = isLight ? `rgba(99,102,241,${alpha})` : `rgba(99,130,246,${alpha})`;
+            ctx.lineWidth = 0.8;
+            ctx.stroke();
+          }
+        }
+      }
+      // Dots
+      for (const d of dots) {
+        ctx.beginPath();
+        ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2);
+        ctx.fillStyle = isLight ? 'rgba(99,102,241,0.5)' : 'rgba(148,163,184,0.45)';
+        ctx.fill();
+      }
+      animId = requestAnimationFrame(draw);
+    }
+
+    resize(); initDots(); draw();
+    window.addEventListener('resize', () => { resize(); initDots(); });
+
+    // Typing animation for hero subtitle
+    const target = document.getElementById('typed-text');
+    if (target) {
+      const phrases = ['coding environment', 'dev workspace', 'VS Code anywhere', 'cloud terminal'];
+      let pi = 0, ci = 0, deleting = false;
+      const CURSOR = '<span class="typing-cursor"></span>';
+      function type() {
+        const phrase = phrases[pi];
+        if (!deleting) {
+          ci++;
+          target.innerHTML = phrase.slice(0, ci) + CURSOR;
+          if (ci === phrase.length) { deleting = true; setTimeout(type, 2200); return; }
+          setTimeout(type, 75);
+        } else {
+          ci--;
+          target.innerHTML = phrase.slice(0, ci) + CURSOR;
+          if (ci === 0) { deleting = false; pi = (pi + 1) % phrases.length; setTimeout(type, 350); return; }
+          setTimeout(type, 42);
+        }
+      }
+      setTimeout(type, 1200);
+    }
+
+    // Scroll to add glassmorphism class to nav
+    const nav = document.getElementById('landing-nav');
+    window.addEventListener('scroll', () => {
+      if (nav) nav.classList.toggle('scrolled', window.scrollY > 20);
+    }, { passive: true });
+  })();
+  </script>
 
   <script src="/app.js"></script>
 </body>

@@ -93,7 +93,7 @@ def _vs_url(vs_id: str) -> str:
     Traffic goes through Nginx → /ws/{vs_id}/ → container:8080.
     No ports involved on the public side.
     """
-    return f"http://{DOMAIN}/ws/{vs_id}/?folder=/home/coder/project"
+    return f"http://{DOMAIN}/ws/{vs_id}/"
 
 
 def _to_out(vs: dict) -> WorkspacePublic:
