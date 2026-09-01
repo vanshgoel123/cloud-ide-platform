@@ -8,7 +8,7 @@ WAL mode + 5 s busy-timeout keep concurrent reads fast.
 import os
 import sqlite3
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 DB_PATH = os.getenv("DB_PATH", "/data/workspaces.db")
 
@@ -61,12 +61,15 @@ def init_db() -> None:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 # ── write ops ──────────────────────────────────────────────────────────────────
 
-def add_workspace(vs_id: str, token: str, user_id: str, container_id: str, password_hash: str) -> None:
+
+def add_workspace(
+    vs_id: str, token: str, user_id: str, container_id: str, password_hash: str
+) -> None:
     now = _now()
     _conn().execute(
         "INSERT INTO workspaces "
@@ -89,9 +92,7 @@ def update_status(vs_id: str, status: str, container_id: str | None = None) -> N
 
 
 def touch_active(vs_id: str) -> None:
-    _conn().execute(
-        "UPDATE workspaces SET last_active = ? WHERE id = ?", (_now(), vs_id)
-    )
+    _conn().execute("UPDATE workspaces SET last_active = ? WHERE id = ?", (_now(), vs_id))
     _conn().commit()
 
 
@@ -115,24 +116,19 @@ def purge_workspace(vs_id: str) -> None:
 
 # ── read ops ────────────────────────────────────────────────────────────────────
 
+
 def get_workspace(vs_id: str) -> dict | None:
-    row = _conn().execute(
-        "SELECT * FROM workspaces WHERE id = ?", (vs_id,)
-    ).fetchone()
+    row = _conn().execute("SELECT * FROM workspaces WHERE id = ?", (vs_id,)).fetchone()
     return dict(row) if row else None
 
 
 def get_workspace_by_token(token: str) -> dict | None:
-    row = _conn().execute(
-        "SELECT * FROM workspaces WHERE token = ?", (token,)
-    ).fetchone()
+    row = _conn().execute("SELECT * FROM workspaces WHERE token = ?", (token,)).fetchone()
     return dict(row) if row else None
 
 
 def list_workspaces() -> list[dict]:
-    rows = _conn().execute(
-        "SELECT * FROM workspaces ORDER BY created_at DESC"
-    ).fetchall()
+    rows = _conn().execute("SELECT * FROM workspaces ORDER BY created_at DESC").fetchall()
     return [dict(r) for r in rows]
 
 
@@ -142,12 +138,16 @@ def get_idle_workspaces(timeout_minutes: int) -> list[dict]:
     timeout_minutes.  Uses SQL datetime comparison to avoid loading every
     row into Python.
     """
-    rows = _conn().execute(
-        """
+    rows = (
+        _conn()
+        .execute(
+            """
         SELECT * FROM workspaces
         WHERE  status = 'running'
           AND  last_active <= datetime('now', ? || ' minutes')
         """,
-        (f"-{timeout_minutes}",),
-    ).fetchall()
+            (f"-{timeout_minutes}",),
+        )
+        .fetchall()
+    )
     return [dict(r) for r in rows]

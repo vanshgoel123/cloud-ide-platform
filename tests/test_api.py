@@ -9,9 +9,9 @@ Design:
   - Each test gets a fresh SQLite DB via a function-scoped fixture.
   - Docker / scheduler side-effects are patched at the app.main level.
 """
+
 import os
 import sys
-import tempfile
 import uuid
 from pathlib import Path
 
@@ -24,18 +24,18 @@ if str(API_ROOT) not in sys.path:
     sys.path.insert(0, str(API_ROOT))
 
 # ── import app modules (docker stub is already in sys.modules via conftest) ───
-import app.db as db_mod
-from app.main import app
-import app.main as main_mod
+import app.db as db_mod  # noqa: E402
+import app.main as main_mod  # noqa: E402
+from app.main import app  # noqa: E402
 
 # ── stub out all Docker / scheduler side-effects ─────────────────────────────
-main_mod.start_reaper      = lambda: None
-main_mod.stop_reaper       = lambda: None
-main_mod.pull_image        = lambda: None
-main_mod.create_workspace  = lambda vs_id, token, password: f"fake-cid-{vs_id}"
-main_mod.start_workspace   = lambda vs_id, token, password: f"fake-cid-{vs_id}"
-main_mod.stop_workspace    = lambda vs_id: None
-main_mod.remove_workspace  = lambda vs_id, purge_volume=False: None
+main_mod.start_reaper = lambda: None
+main_mod.stop_reaper = lambda: None
+main_mod.pull_image = lambda: None
+main_mod.create_workspace = lambda vs_id, token, password: f"fake-cid-{vs_id}"
+main_mod.start_workspace = lambda vs_id, token, password: f"fake-cid-{vs_id}"
+main_mod.stop_workspace = lambda vs_id: None
+main_mod.remove_workspace = lambda vs_id, purge_volume=False: None
 main_mod.container_running = lambda vs_id: True
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -61,6 +61,7 @@ def client(tmp_path):
 
 
 # ── tests ─────────────────────────────────────────────────────────────────────
+
 
 def test_health(client):
     r = client.get("/health")

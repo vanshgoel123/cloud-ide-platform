@@ -18,7 +18,7 @@ import docker.errors
 
 logger = logging.getLogger("cloudide.docker")
 
-VS_IMAGE     = os.getenv("VS_IMAGE",    "codercom/code-server:latest")
+VS_IMAGE = os.getenv("VS_IMAGE", "codercom/code-server:latest")
 VS_CPU_LIMIT = float(os.getenv("VS_CPU_LIMIT", "0.5"))
 VS_MEM_LIMIT = os.getenv("VS_MEM_LIMIT", "512m")
 NETWORK_NAME = os.getenv("DOCKER_NETWORK", "cloudide_net")
@@ -29,6 +29,7 @@ class WorkspaceRuntimeError(RuntimeError):
 
 
 # ── helpers ──────────────────────────────────────────────────────────────────
+
 
 def _client() -> docker.DockerClient:
     return docker.from_env()
@@ -53,6 +54,7 @@ def _container_name(vs_id: str) -> str:
 
 # ── public API ────────────────────────────────────────────────────────────────
 
+
 def create_workspace(vs_id: str, token: str, password: str) -> str:
     """
     Create and start a code-server container.
@@ -63,11 +65,11 @@ def create_workspace(vs_id: str, token: str, password: str) -> str:
 
     Returns the container ID.
     """
-    client    = _client()
+    client = _client()
     _ensure_network()
 
-    vol       = _volume_name(vs_id)
-    name      = _container_name(vs_id)
+    vol = _volume_name(vs_id)
+    name = _container_name(vs_id)
     base_path = f"/ws/{vs_id}"
     nano_cpus = int(VS_CPU_LIMIT * 1e9)
 
@@ -79,7 +81,7 @@ def create_workspace(vs_id: str, token: str, password: str) -> str:
             name=name,
             hostname=name,
             environment={
-                "PASSWORD":  password,   # user-chosen password
+                "PASSWORD": password,  # user-chosen password
                 "ROOT_PATH": base_path,  # public sub-path for asset URLs
             },
             volumes={
@@ -90,7 +92,7 @@ def create_workspace(vs_id: str, token: str, password: str) -> str:
             restart_policy={"Name": "unless-stopped"},
             labels={
                 "cloudide.workspace": vs_id,
-                "cloudide.managed":   "true",
+                "cloudide.managed": "true",
             },
             network=NETWORK_NAME,
             init=True,
@@ -104,9 +106,7 @@ def create_workspace(vs_id: str, token: str, password: str) -> str:
         return container.id
 
     except docker.errors.DockerException as exc:
-        raise WorkspaceRuntimeError(
-            f"failed to create workspace runtime: {exc}"
-        ) from exc
+        raise WorkspaceRuntimeError(f"failed to create workspace runtime: {exc}") from exc
 
 
 def start_workspace(vs_id: str, token: str, password: str) -> str:
@@ -116,7 +116,7 @@ def start_workspace(vs_id: str, token: str, password: str) -> str:
     Returns the container ID.
     """
     client = _client()
-    name   = _container_name(vs_id)
+    name = _container_name(vs_id)
     try:
         c = client.containers.get(name)
         c.reload()
@@ -128,15 +128,13 @@ def start_workspace(vs_id: str, token: str, password: str) -> str:
         logger.info("container %s not found, recreating", name)
         return create_workspace(vs_id, token, password)
     except docker.errors.DockerException as exc:
-        raise WorkspaceRuntimeError(
-            f"failed to start workspace runtime: {exc}"
-        ) from exc
+        raise WorkspaceRuntimeError(f"failed to start workspace runtime: {exc}") from exc
 
 
 def stop_workspace(vs_id: str) -> None:
     """Stop a container but keep its volume (files are preserved)."""
     client = _client()
-    name   = _container_name(vs_id)
+    name = _container_name(vs_id)
     try:
         c = client.containers.get(name)
         c.stop(timeout=10)
@@ -144,15 +142,13 @@ def stop_workspace(vs_id: str) -> None:
     except docker.errors.NotFound:
         logger.debug("stop_workspace: container %s not found (already stopped)", name)
     except docker.errors.DockerException as exc:
-        raise WorkspaceRuntimeError(
-            f"failed to stop workspace runtime: {exc}"
-        ) from exc
+        raise WorkspaceRuntimeError(f"failed to stop workspace runtime: {exc}") from exc
 
 
 def remove_workspace(vs_id: str, purge_volume: bool = False) -> None:
     """Remove the container and optionally its persistent volume."""
     client = _client()
-    name   = _container_name(vs_id)
+    name = _container_name(vs_id)
 
     try:
         c = client.containers.get(name)
@@ -161,9 +157,7 @@ def remove_workspace(vs_id: str, purge_volume: bool = False) -> None:
     except docker.errors.NotFound:
         pass
     except docker.errors.DockerException as exc:
-        raise WorkspaceRuntimeError(
-            f"failed to remove workspace runtime: {exc}"
-        ) from exc
+        raise WorkspaceRuntimeError(f"failed to remove workspace runtime: {exc}") from exc
 
     if purge_volume:
         vol_name = _volume_name(vs_id)
@@ -173,9 +167,7 @@ def remove_workspace(vs_id: str, purge_volume: bool = False) -> None:
         except docker.errors.NotFound:
             pass
         except docker.errors.DockerException as exc:
-            raise WorkspaceRuntimeError(
-                f"failed to purge workspace volume: {exc}"
-            ) from exc
+            raise WorkspaceRuntimeError(f"failed to purge workspace volume: {exc}") from exc
 
 
 def container_running(vs_id: str) -> bool:

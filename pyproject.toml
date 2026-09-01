@@ -1,0 +1,29 @@
+[tool.ruff]
+# Target Python version used in api/Dockerfile
+target-version = "py312"
+line-length = 100
+
+# Files/dirs to lint
+include = ["api/**/*.py", "tests/**/*.py"]
+
+[tool.ruff.lint]
+# E/W = pycodestyle, F = pyflakes, I = isort, UP = pyupgrade, B = flake8-bugbear
+select = ["E", "W", "F", "I", "UP", "B"]
+ignore = [
+  "E501",  # line-length (handled by formatter)
+  "B008",  # do not perform function calls in default args (FastAPI Depends pattern)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]  # allow assert in tests
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+# ── pytest ────────────────────────────────────────────────────────────────────
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"

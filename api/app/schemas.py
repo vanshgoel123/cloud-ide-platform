@@ -19,14 +19,14 @@ class WorkspaceCreate(BaseModel):
 class WorkspacePublic(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
-    id:           str
-    user_id:      str
+    id: str
+    user_id: str
     container_id: str | None = None
-    status:       str
-    deleted_at:   str | None = None
-    url:          str | None = None
-    created_at:   str
-    last_active:  str
+    status: str
+    deleted_at: str | None = None
+    url: str | None = None
+    created_at: str
+    last_active: str
 
 
 class WorkspaceCreateOut(WorkspacePublic):
@@ -35,4 +35,5 @@ class WorkspaceCreateOut(WorkspacePublic):
     The token is the workspace PASSWORD for code-server — share it only with
     the intended user. It is never returned again after this response.
     """
+
     token: str

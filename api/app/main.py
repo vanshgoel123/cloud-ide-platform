@@ -13,11 +13,11 @@ This eliminates the port-range allocation, the port-leak race, and the
 requirement to open a range of host ports.
 """
 
+import logging
 import secrets
 import threading
 import time
 import uuid
-import logging
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
@@ -29,12 +29,12 @@ from . import db
 from .config import settings
 from .docker_manager import (
     WorkspaceRuntimeError,
-    pull_image,
+    container_running,
     create_workspace,
+    pull_image,
+    remove_workspace,
     start_workspace,
     stop_workspace,
-    remove_workspace,
-    container_running,
 )
 from .idle_reaper import start_reaper, stop_reaper
 from .schemas import WorkspaceCreate, WorkspaceCreateOut, WorkspacePublic
@@ -57,17 +57,18 @@ if not logger.handlers:
 
 # ── rate limiter ──────────────────────────────────────────────────────────────
 
+
 class InMemoryRateLimiter:
     """Sliding-window per-key rate limiter (thread-safe)."""
 
     def __init__(self, limit: int, window_seconds: int) -> None:
-        self.limit          = max(1, limit)
+        self.limit = max(1, limit)
         self.window_seconds = max(1, window_seconds)
-        self._lock: threading.Lock        = threading.Lock()
+        self._lock: threading.Lock = threading.Lock()
         self._bucket: dict[str, list[float]] = {}
 
     def allow(self, key: str) -> bool:
-        now       = time.time()
+        now = time.time()
         threshold = now - self.window_seconds
         with self._lock:
             hits = [ts for ts in self._bucket.get(key, []) if ts > threshold]
@@ -86,6 +87,7 @@ create_rate_limiter = InMemoryRateLimiter(
 
 
 # ── helpers ───────────────────────────────────────────────────────────────────
+
 
 def _vs_url(vs_id: str) -> str:
     """
@@ -115,9 +117,7 @@ def _ensure_not_deleted(vs: dict) -> None:
 
 
 def _track(op: str, success: bool) -> None:
-    WORKSPACE_OPERATIONS_TOTAL.labels(
-        operation=op, outcome="success" if success else "error"
-    ).inc()
+    WORKSPACE_OPERATIONS_TOTAL.labels(operation=op, outcome="success" if success else "error").inc()
 
 
 def _require_api_key(x_api_key: str | None = Header(default=None)) -> None:
@@ -135,6 +135,7 @@ def _client_ip(req: Request) -> str:
 
 
 # ── lifespan ──────────────────────────────────────────────────────────────────
+
 
 def _pull_image_background():
     """Pull the code-server image in a background thread so startup isn't blocked."""
@@ -164,11 +165,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        o.strip()
-        for o in settings.cors_allow_origins.split(",")
-        if o.strip()
-    ],
+    allow_origins=[o.strip() for o in settings.cors_allow_origins.split(",") if o.strip()],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -177,12 +174,15 @@ app.add_middleware(
 
 @app.middleware("http")
 async def request_logging_middleware(request: Request, call_next):
-    start    = time.perf_counter()
+    start = time.perf_counter()
     response = await call_next(request)
-    elapsed  = (time.perf_counter() - start) * 1000
+    elapsed = (time.perf_counter() - start) * 1000
     logger.info(
         "path=%s method=%s status=%s %.2fms",
-        request.url.path, request.method, response.status_code, elapsed,
+        request.url.path,
+        request.method,
+        response.status_code,
+        elapsed,
     )
     return response
 
@@ -193,6 +193,7 @@ def runtime_error_handler(_request: Request, exc: WorkspaceRuntimeError):
 
 
 # ── endpoints ─────────────────────────────────────────────────────────────────
+
 
 @app.get("/health", tags=["ops"])
 def health():
@@ -209,6 +210,7 @@ def metrics():
 
 
 # ── workspaces ────────────────────────────────────────────────────────────────
+
 
 @app.post(
     "/api/workspaces",
@@ -232,6 +234,7 @@ def api_create(
 
     # Hash the user's password before storing (never store plaintext)
     import hashlib
+
     password_hash = hashlib.sha256(body.password.encode()).hexdigest()
 
     # create_workspace raises WorkspaceRuntimeError on failure.
