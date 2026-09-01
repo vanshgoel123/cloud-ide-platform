@@ -79,8 +79,9 @@ jobs:
 
   # ───────────────────────────────────────────────────────────────────────────
   # JOB 3 — Deploy
-  # .env already exists on the VM — just bring compose up with the freshly
-  # built images from the previous job.
+  # .env lives in /home/vansh/cloud-ide-platform (never committed).
+  # We run compose from the freshly checked-out workspace so Docker always
+  # rebuilds from the new source — not from stale files in the deploy dir.
   # ───────────────────────────────────────────────────────────────────────────
   deploy:
     name: "Deploy"
@@ -89,6 +90,14 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-      - name: "docker compose up"
-        working-directory: /home/vansh/cloud-ide-platform
-        run: docker compose up -d --remove-orphans
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "docker compose down → up --build"
+        run: |
+          # Pull .env from the persistent deployment dir (never in git)
+          cp /home/vansh/cloud-ide-platform/.env .env
+
+          # Tear down old containers, rebuild images from fresh source, start
+          docker compose down --remove-orphans
+          docker compose up -d --build --remove-orphans
