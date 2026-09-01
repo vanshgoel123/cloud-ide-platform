@@ -44,7 +44,7 @@ VALID_PAYLOAD = {"user_id": "test-user", "password": "secret123"}
 
 @pytest.fixture()
 def client(tmp_path):
-    """Each test gets a fresh SQLite database."""
+    """Each test gets a fresh SQLite database and a reset rate-limiter."""
     db_file = tmp_path / f"test-{uuid.uuid4().hex}.db"
     os.environ["DB_PATH"] = str(db_file)
     db_mod.DB_PATH = str(db_file)
@@ -55,6 +55,11 @@ def client(tmp_path):
         except Exception:
             pass
         del db_mod._local.conn
+
+    # Reset the in-memory rate-limiter — it's a module-level singleton and
+    # its hit-counts persist across tests in the same process.  Without this
+    # the 6th workspace-creation test gets a 429 instead of the workspace.
+    main_mod.create_rate_limiter._bucket.clear()
 
     with TestClient(app) as c:
         yield c
